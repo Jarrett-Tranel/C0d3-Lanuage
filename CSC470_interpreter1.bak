@@ -41,7 +41,6 @@
     (not (eq? (apply-env var-name env) #f))))
 
 ; Grammar Constructors
-
 (define lit-exp
   (lambda (n)
     (list 'lit-exp n)))
@@ -58,13 +57,7 @@
   (lambda (lambda-exp param-value)
     (list 'app-exp lambda-exp param-value)))
 
-(define math-exp
-  (lambda (lc-exp1 op lc-exp2)
-    (list 'math-exp lc-exp1 op lc-exp2)))
-
-;math-exp 10 / 11
 ; Grammar Extractors
-
 (define lc-exp->type
   (lambda (lc-exp)
     (car lc-exp)))
@@ -94,10 +87,6 @@
     (caddr app-exp)))
 
 ; Grammar Predicates
-(define math-exp?
-  (lambda (lc-exp)
-    (eq? (lc-exp->type lc-exp) 'math-exp)))
-
 (define lit-exp?
   (lambda (lc-exp)
     (eq? (lc-exp->type lc-exp) 'lit-exp)))
@@ -115,7 +104,6 @@
     (eq? (lc-exp->type lc-exp) 'lambda-exp)))
 
 ;C0d3 Extractors
-
 (define literal-exp->value
   (lambda (literal-exp)
     (cadr literal-exp)))
@@ -140,49 +128,15 @@
   (lambda (run-exp)
     (cadddr run-exp)))
 
-(define math-exp->operator
-  (lambda(math-exp)
-    (cond
-      ((eq? (caddr math-exp) '+) +)
-      ((eq? (caddr math-exp) '-) -)
-      ((eq? (caddr math-exp) '*) *)
-      ((eq? (caddr math-exp) '/) /))))
-
-(define math-exp->firstNum
-  (lambda (math-exp)
-    (cond
-      ((lit-exp? (cadr math-exp)) (literal-exp->value (cadr math-exp)))
-      ((var-exp? (cadr math-exp)) (apply-env (var-exp->var-name (cadr math-exp)) env)))))
-
-(define math-exp->secondNum
-  (lambda (math-exp)
-    (cond
-      ((lit-exp? (cadddr math-exp)) (literal-exp->value (cadddr math-exp)))
-      ((var-exp? (cadddr math-exp)) (apply-env (var-exp->var-name (cadddr math-exp)) env)))))
-
-; math-ex e - 2
-;do math helper function
-
-(define do-math 
-  (lambda(math-exp)    
-    ((math-exp->operator math-exp) (math-exp->firstNum math-exp) (math-exp->secondNum math-exp))))
-    
-
-;mat-ex 1 / 1       
 ; Parse/Unparse
 ; (func gets (x) does x)
-; (Run (func (x) x) 'with parameter)
-; (Get-Value 'A)
+; (Run (func (x) x) ‘with parameter)
+; (Get-Value ‘A)
 ; (literal 5)
-; (math 2 + 1)
 
 (define parse-expression
   (lambda (c0d3)
     (cond
-      ((eq? (car c0d3) 'math) (math-exp
-                               (parse-expression (cadr c0d3))
-                               (caddr c0d3)
-                               (parse-expression (cadddr c0d3))))
       ((eq? (car c0d3) 'literal) (lit-exp (literal-exp->value c0d3)))
       ((eq? (car c0d3) 'get-value) (var-exp (get-value-exp->value c0d3)))
       ((eq? (car c0d3) 'func) (lambda-exp (func-exp->parameter c0d3) (parse-expression (func-exp->body c0d3))))
@@ -193,7 +147,6 @@
 (define apply-expression
   (lambda (lcexp env)
     (cond
-      ((math-exp? lcexp)(do-math lcexp))
       ((lit-exp? lcexp) (lit-exp->value lcexp))
       ((var-exp? lcexp) (apply-env (var-exp->var-name lcexp) env))
       ((lambda-exp? lcexp) (apply-expression (lambda-exp->body lcexp) env))
@@ -202,14 +155,16 @@
                               (the-parameter-value (apply-expression (app-exp->parameter-input lcexp) env))
                               (the-new-env (extend-env the-lambda-param-name the-parameter-value env)))
                           (apply-expression the-lambda the-new-env))))))
+                          
 
 (define run-program
   (lambda (c0d3-src env)
     (apply-expression (parse-expression c0d3-src) env)))
 
-(define myC0d32 '(run (func gets (a) math (get-value e)) - (literal 5)))
-(define myC0d3 '(get-value e))
-(define mycode2 '(math (get-value e) - (get-value d)))
+(define myC0d3 '(run (func gets (a) does (get-value a)) with (literal 5)))
 (define env (extend-env* '(c d e) '(1 2 3) (empty-env)))
-(parse-expression mycode2)
-(run-program mycode2 env)
+(parse-expression myC0d3)
+(run-program myC0d3 env)
+
+
+         
