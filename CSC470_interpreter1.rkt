@@ -41,7 +41,6 @@
     (not (eq? (apply-env var-name env) #f))))
 
 ; Grammar Constructors
-
 (define lit-exp
   (lambda (n)
     (list 'lit-exp n)))
@@ -49,6 +48,18 @@
 (define var-exp
   (lambda (s)
     (list 'var-exp s)))
+
+(define bool-exp
+  (lambda (op left right)
+    (list 'bool-exp op left right)))
+
+(define if-exp
+  (lambda (bool-exp true-exp false-exp)
+    (list 'if-exp bool-exp true-exp false-exp)))
+
+(define math-exp
+  (lambda (op left right)
+    (list 'math-exp op left right)))
 
 (define lambda-exp
   (lambda (s lc-exp)
@@ -58,13 +69,7 @@
   (lambda (lambda-exp param-value)
     (list 'app-exp lambda-exp param-value)))
 
-(define math-exp
-  (lambda (lc-exp1 op lc-exp2)
-    (list 'math-exp lc-exp1 op lc-exp2)))
-
-;math-exp 10 / 11
 ; Grammar Extractors
-
 (define lc-exp->type
   (lambda (lc-exp)
     (car lc-exp)))
@@ -76,6 +81,42 @@
 (define var-exp->var-name
   (lambda (var-exp)
     (cadr var-exp)))
+
+(define bool-exp->op
+  (lambda (bool-exp)
+    (cadr bool-exp)))
+
+(define if-exp->bool-exp
+  (lambda (if-exp)
+    (cadr if-exp)))
+
+(define if-exp->true-exp
+  (lambda (if-exp)
+    (caddr if-exp)))
+
+(define if-exp->false-exp
+  (lambda (if-exp)
+    (cadddr if-exp)))
+
+(define bool-exp->left
+  (lambda (bool-exp)
+    (caddr bool-exp)))
+
+(define bool-exp->right
+  (lambda (bool-exp)
+    (cadddr bool-exp)))
+
+(define math-exp->op
+  (lambda (math-exp)
+    (cadr math-exp)))
+
+(define math-exp->left
+  (lambda (math-exp)
+    (caddr math-exp)))
+
+(define math-exp->right
+  (lambda (math-exp)
+    (cadddr math-exp)))
 
 (define lambda-exp->parameter-name
   (lambda (lambda-exp)
@@ -94,10 +135,6 @@
     (caddr app-exp)))
 
 ; Grammar Predicates
-(define math-exp?
-  (lambda (lc-exp)
-    (eq? (lc-exp->type lc-exp) 'math-exp)))
-
 (define lit-exp?
   (lambda (lc-exp)
     (eq? (lc-exp->type lc-exp) 'lit-exp)))
@@ -105,6 +142,18 @@
 (define var-exp?
   (lambda (lc-exp)
     (eq? (lc-exp->type lc-exp) 'var-exp)))
+
+(define bool-exp?
+  (lambda (lc-exp)
+    (eq? (lc-exp->type lc-exp) 'bool-exp)))
+
+(define if-exp?
+  (lambda (lc-exp)
+    (eq? (lc-exp->type lc-exp) 'if-exp)))
+
+(define math-exp?
+  (lambda (lc-exp)
+    (eq? (lc-exp->type lc-exp) 'math-exp)))
 
 (define app-exp?
   (lambda (lc-exp)
@@ -115,10 +164,45 @@
     (eq? (lc-exp->type lc-exp) 'lambda-exp)))
 
 ;C0d3 Extractors
-
 (define literal-exp->value
   (lambda (literal-exp)
     (cadr literal-exp)))
+
+(define test-exp->op
+  (lambda (test-exp)
+    (cadr test-exp)))
+
+(define test-exp->left
+  (lambda (test-exp)
+    (caddr test-exp)))
+
+(define test-exp->right
+  (lambda (test-exp)
+    (cadddr test-exp)))
+
+(define question-exp->test-exp
+  (lambda (question-exp)
+    (cadr question-exp)))
+
+(define question-exp->true-exp
+  (lambda (question-exp)
+    (cadddr question-exp)))
+
+(define question-exp->false-exp
+  (lambda (question-exp)
+    (cadddr (cadr question-exp))))
+
+(define do-math->op
+  (lambda (do-math-exp)
+    (cadr do-math-exp)))
+
+(define do-math->left
+  (lambda (do-math-exp)
+    (caddr do-math-exp)))
+
+(define do-math->right
+  (lambda (do-math-exp)
+    (cadddr do-math-exp)))
 
 (define get-value-exp->value
   (lambda (get-val-exp)
@@ -140,76 +224,100 @@
   (lambda (run-exp)
     (cadddr run-exp)))
 
-(define math-exp->operator
-  (lambda(math-exp)
-    (cond
-      ((eq? (caddr math-exp) '+) +)
-      ((eq? (caddr math-exp) '-) -)
-      ((eq? (caddr math-exp) '*) *)
-      ((eq? (caddr math-exp) '/) /))))
-
-(define math-exp->firstNum
-  (lambda (math-exp)
-    (cond
-      ((lit-exp? (cadr math-exp)) (literal-exp->value (cadr math-exp)))
-      ((var-exp? (cadr math-exp)) (apply-env (var-exp->var-name (cadr math-exp)) env)))))
-
-(define math-exp->secondNum
-  (lambda (math-exp)
-    (cond
-      ((lit-exp? (cadddr math-exp)) (literal-exp->value (cadddr math-exp)))
-      ((var-exp? (cadddr math-exp)) (apply-env (var-exp->var-name (cadddr math-exp)) env)))))
-
-; math-ex e - 2
-;do math helper function
-
-(define do-math 
-  (lambda(math-exp)    
-    ((math-exp->operator math-exp) (math-exp->firstNum math-exp) (math-exp->secondNum math-exp))))
-    
-
-;mat-ex 1 / 1       
 ; Parse/Unparse
 ; (func gets (x) does x)
-; (Run (func (x) x) 'with parameter)
-; (Get-Value 'A)
+; (Run (func (x) x) ‘with parameter)
+; (Get-Value ‘A)
 ; (literal 5)
-; (math 2 + 1)
+; (do-math '+ (literal 5) (literal 4))
+; (test < (get-value a) (literal 7))
+; (ask-question (test < (get-value a) (literal 7)) if-true-do-> (literal 1) if-false-do-> (literal 0))
 
 (define parse-expression
   (lambda (c0d3)
     (cond
-      ((eq? (car c0d3) 'math) (math-exp
-                               (parse-expression (cadr c0d3))
-                               (caddr c0d3)
-                               (parse-expression (cadddr c0d3))))
       ((eq? (car c0d3) 'literal) (lit-exp (literal-exp->value c0d3)))
+      ((eq? (car c0d3) 'test) (bool-exp (test-exp->op c0d3)
+                                        (parse-expression (test-exp->left c0d3))
+                                        (parse-expression (test-exp->right c0d3))))
+     
+
+      ((eq? (car c0d3) 'ask-question)
+       (if-exp (bool-exp
+                (test-exp->op (parse-expression (question-exp->test-exp c0d3)))
+                ;we got the operator
+                ; (test < (get-value a) (literal 7)) We need the left and right before we can know the true and false expressions (Finish up the bool-exp)
+                (parse-expression(test-exp->left(question-exp->test-exp c0d3)))
+                (parse-expression(test-exp->right(question-exp->test-exp c0d3))))
+                (parse-expression(question-exp->true-exp c0d3))
+                (parse-expression(question-exp->false-exp c0d3))))
+      ((eq? (car c0d3) 'do-math) (math-exp (do-math->op c0d3)
+                                           (parse-expression (do-math->left c0d3))
+                                           (parse-expression (do-math->right c0d3))))
       ((eq? (car c0d3) 'get-value) (var-exp (get-value-exp->value c0d3)))
       ((eq? (car c0d3) 'func) (lambda-exp (func-exp->parameter c0d3) (parse-expression (func-exp->body c0d3))))
       ((eq? (car c0d3) 'run) (app-exp
                               (parse-expression (run-exp->func c0d3))
                               (parse-expression (run-exp->parameter c0d3)))))))
 
+; Language Helpers
+(define do-math
+  (lambda (op left right)
+    (cond
+      ((eq? op '+) (+ left right))
+      ((eq? op '-) (- left right))
+      ((eq? op '*) (* left right))
+      ((eq? op '/) (/ left right)))))
+
+(define what-to-do
+  (lambda (bool-answer if-exp)
+    (cond
+      ((eq? bool-answer #t) (if-exp->true-exp if-exp))
+      ((eq? bool-answer #f) (if-exp->false-exp if-exp)))))
+    
+
+(define resolve-boolean
+  (lambda (op left right)
+    (cond
+      ((eq? op '<) (< left right))
+      ((eq? op '<=) (<= left right))
+      ((eq? op '>) (> left right))
+      ((eq? op '>=) (>= left right))
+      ((eq? op '==) (= left right))
+      ((eq? op '!=) (not (= left right)))))) 
+
 (define apply-expression
   (lambda (lcexp env)
     (cond
-      ((math-exp? lcexp)(do-math lcexp))
       ((lit-exp? lcexp) (lit-exp->value lcexp))
       ((var-exp? lcexp) (apply-env (var-exp->var-name lcexp) env))
+      ((bool-exp? lcexp) (let ((op (bool-exp->op lcexp))
+                               (left (apply-expression (bool-exp->left lcexp) env))
+                               (right (apply-expression (bool-exp->right lcexp) env)))
+                           (resolve-boolean op left right)))
+      ((if-exp? lcexp)   (let ((op (bool-exp->op(cadr lcexp)))
+                               (left(apply-expression(bool-exp->left(cadr lcexp))env))
+                               (right(apply-expression(bool-exp->right(cadr lcexp))env)))
+                           (apply-expression(what-to-do(resolve-boolean op left right) lcexp)env)))
+      ((math-exp? lcexp) (let ((op (math-exp->op lcexp))
+                               (left (apply-expression (math-exp->left lcexp) env))
+                               (right (apply-expression (math-exp->right lcexp) env)))
+                           (do-math op left right)))
       ((lambda-exp? lcexp) (apply-expression (lambda-exp->body lcexp) env))
       ((app-exp? lcexp) (let* ((the-lambda (app-exp->lambda-exp lcexp))
                               (the-lambda-param-name (lambda-exp->parameter-name the-lambda))
                               (the-parameter-value (apply-expression (app-exp->parameter-input lcexp) env))
                               (the-new-env (extend-env the-lambda-param-name the-parameter-value env)))
                           (apply-expression the-lambda the-new-env))))))
+                          
 
 (define run-program
   (lambda (c0d3-src env)
     (apply-expression (parse-expression c0d3-src) env)))
 
-(define myC0d32 '(run (func gets (a) math (get-value e)) - (literal 5)))
-(define myC0d3 '(get-value e))
-(define mycode2 '(math (get-value e) - (get-value d)))
+
+(define myC0d3 '(run (func gets (a) does (do-math + (get-value a) (literal 2))) with (literal 5)))
+(define c0d3-bool '(ask-question (test < (get-value c) (literal 0)) 'if-true-do-> (literal 1) 'if-false-do-> (literal 0)))
 (define env (extend-env* '(c d e) '(1 2 3) (empty-env)))
-(parse-expression mycode2)
-(run-program mycode2 env)
+(parse-expression c0d3-bool)
+(display(run-program c0d3-bool env))
